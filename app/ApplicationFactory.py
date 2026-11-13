@@ -4,8 +4,8 @@ from contextlib import asynccontextmanager
 from fastapi import FastAPI, Request
 from fastapi.responses import JSONResponse
 
-from app.ServiceContainer import ServiceContainer
 from app.common.exceptions.ServiceError import ServiceError
+from app.ServiceContainer import ServiceContainer
 
 
 class ApplicationFactory:
