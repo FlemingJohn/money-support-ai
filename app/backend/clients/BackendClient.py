@@ -8,14 +8,12 @@ from app.backend.models.AssistantSettings import AssistantSettings
 from app.backend.models.CallReport import CallReport
 from app.backend.models.CallStart import CallStart
 from app.backend.models.Faq import Faq
+from app.backend.models.FeedbackItem import FeedbackItem
 from app.backend.models.PublishedAgent import PublishedAgent
-from app.evaluation.models.EvaluationCase import EvaluationCase
-from app.improvement.models.FeedbackItem import FeedbackItem
 
 
 class BackendClient:
     faq_list = TypeAdapter(list[Faq])
-    case_list = TypeAdapter(list[EvaluationCase])
     rule_list = TypeAdapter(list[str])
     feedback_list = TypeAdapter(list[FeedbackItem])
 
@@ -37,10 +35,6 @@ class BackendClient:
     async def get_feedback(self) -> list[FeedbackItem]:
         body = await self.get("/internal/feedback")
         return self.parse(lambda: self.feedback_list.validate_python(body))
-
-    async def get_review_tests(self) -> list[EvaluationCase]:
-        body = await self.get("/internal/review-tests")
-        return self.parse(lambda: self.case_list.validate_python(body))
 
     async def get_published_agent(self) -> PublishedAgent:
         body = await self.get("/internal/agent/published")
