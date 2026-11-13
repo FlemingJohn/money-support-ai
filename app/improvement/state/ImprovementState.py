@@ -1,6 +1,6 @@
 from typing import TypedDict
 
-from app.improvement.models.FeedbackItem import FeedbackItem
+from app.backend.models.FeedbackItem import FeedbackItem
 
 
 class ImprovementState(TypedDict, total=False):
