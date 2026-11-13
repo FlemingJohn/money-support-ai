@@ -8,7 +8,4 @@ class EvaluationTurn(CamelModel):
     content: str = ""
     check: Literal["answers", "handsOff", "endsCall"] | None = None
     expectation: str = ""
-
-    @property
-    def is_checked(self) -> bool:
-        return self.check is not None
+    reason: str | None = None
