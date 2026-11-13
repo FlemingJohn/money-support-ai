@@ -5,7 +5,10 @@ from pydantic import TypeAdapter, ValidationError
 
 from app.backend.exceptions.BackendRequestError import BackendRequestError
 from app.backend.models.AssistantSettings import AssistantSettings
+from app.backend.models.CallReport import CallReport
+from app.backend.models.CallStart import CallStart
 from app.backend.models.Faq import Faq
+from app.backend.models.PublishedAgent import PublishedAgent
 from app.evaluation.models.EvaluationCase import EvaluationCase
 from app.improvement.models.FeedbackItem import FeedbackItem
 
@@ -39,9 +42,19 @@ class BackendClient:
         body = await self.get("/internal/review-tests")
         return self.parse(lambda: self.case_list.validate_python(body))
 
+    async def get_published_agent(self) -> PublishedAgent:
+        body = await self.get("/internal/agent/published")
+        return self.parse(lambda: PublishedAgent.model_validate(body))
+
     async def ring_team(self, call_id: str, reason: str, caller_need: str) -> bool:
         body = await self.post("/internal/hand-offs/ring", {"callId": call_id, "reason": reason, "callerNeed": caller_need})
         return isinstance(body, dict) and body.get("isRung") is True
+
+    async def report_call_started(self, call_start: CallStart) -> None:
+        await self.post("/internal/calls/started", call_start.model_dump(by_alias=True, mode="json"))
+
+    async def report_call_finished(self, call_report: CallReport) -> None:
+        await self.post("/internal/calls/finished", call_report.model_dump(by_alias=True, mode="json"))
 
     async def post(self, path: str, payload: dict) -> object:
         try:
