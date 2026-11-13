@@ -3,9 +3,7 @@ from datetime import UTC, datetime
 
 from app.backend.clients.BackendClient import BackendClient
 from app.handoff.catalogs.HandOffReasonCatalog import HandOffReasonCatalog
-from app.handoff.services.HandOffGraph import HandOffGraph
-from app.handoff.services.ReasonNode import ReasonNode
-from app.handoff.services.RingTeamNode import RingTeamNode
+from app.handoff.services.HandOffService import HandOffService
 from app.voice.actions.LiveCallActions import LiveCallActions
 from app.voice.state.CallRecord import CallRecord
 from tests.support.FakeHttpServer import FakeHttpServer
@@ -20,8 +18,8 @@ class LiveCallActionsTest:
         session = FakeVoiceSession()
         record = CallRecord(call_id="call-1", channel="web", customer_number=None, started_at=datetime.now(UTC))
         reason_catalog = HandOffReasonCatalog()
-        graph = HandOffGraph(ReasonNode(reason_catalog), RingTeamNode(BackendClient(backend.make_client("http://backend.test"))))
-        return LiveCallActions(session, record, SampleData.hand_off_sentence, graph, reason_catalog), session, record
+        hand_off_service = HandOffService(reason_catalog, BackendClient(backend.make_client("http://backend.test")))
+        return LiveCallActions(session, record, SampleData.hand_off_sentence, hand_off_service, reason_catalog), session, record
 
     def test_hand_off_says_why_rings_the_team_then_says_the_sentence(self) -> None:
         backend = FakeHttpServer({self.ring_path: {"isRung": True}})
