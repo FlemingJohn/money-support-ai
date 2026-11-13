@@ -21,7 +21,6 @@ dev = [
     "pytest>=9.2.0",
 ]
 voice = [
-    "livekit-agents[silero,turn-detector]>=1.2",
     "livekit-plugins-noise-cancellation>=0.3.3",
 ]
 
