@@ -25,7 +25,7 @@ class AssistantSyncService:
         learned_rules = await self.load_learned_rules() + (extra_rules or [])
         prompt_content = self.prompt_builder.build(faqs, settings, learned_rules)
         prompt_hash = hashlib.sha256(prompt_content.encode()).hexdigest()
-        return AssistantDraft(faqs=faqs, settings=settings, prompt_content=prompt_content, prompt_hash=prompt_hash)
+        return AssistantDraft(prompt_content=prompt_content, prompt_hash=prompt_hash)
 
     async def load_learned_rules(self) -> list[str]:
         try:
