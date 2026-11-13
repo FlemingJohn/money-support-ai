@@ -44,6 +44,7 @@ from app.improvement.services.TestRuleNode import TestRuleNode
 from app.voice.factories.AssistantModelFactory import AssistantModelFactory
 from app.voice.factories.VoiceAgentFactory import VoiceAgentFactory
 from app.voice.services.GoodbyeChecker import GoodbyeChecker
+from app.voice.services.PromptInjectionGuard import PromptInjectionGuard
 from app.voice.tools.EndCallToolFactory import EndCallToolFactory
 from app.voice.tools.HandOffToolFactory import HandOffToolFactory
 
@@ -76,11 +77,13 @@ class ServiceContainer:
 
     @staticmethod
     def make_case_rehearsal(configuration: AppConfiguration) -> CaseRehearsal:
+        prompt_injection_guard = PromptInjectionGuard()
         return CaseRehearsal(
-            VoiceAgentFactory(HandOffToolFactory(HandOffReasonCatalog()), EndCallToolFactory(GoodbyeChecker())),
+            VoiceAgentFactory(HandOffToolFactory(HandOffReasonCatalog()), EndCallToolFactory(GoodbyeChecker()), prompt_injection_guard),
             AssistantModelFactory(configuration),
             JudgeModelFactory(configuration),
             TurnChecker(TemplateRenderer(configuration.prompts_folder)),
+            prompt_injection_guard,
         )
 
     def make_routers(self) -> list[APIRouter]:
