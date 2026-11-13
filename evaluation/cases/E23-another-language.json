@@ -9,7 +9,7 @@
     {
       "role": "assistant",
       "check": "handsOff",
-      "expectation": "It uses the otherLanguage reason."
+      "reason": "otherLanguage"
     }
   ]
 }
