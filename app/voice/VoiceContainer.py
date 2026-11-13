@@ -15,6 +15,7 @@ from app.voice.factories.VoiceAgentFactory import VoiceAgentFactory
 from app.voice.services.CallHandler import CallHandler
 from app.voice.services.CallReportBuilder import CallReportBuilder
 from app.voice.services.GoodbyeChecker import GoodbyeChecker
+from app.voice.services.PromptInjectionGuard import PromptInjectionGuard
 from app.voice.tools.EndCallToolFactory import EndCallToolFactory
 from app.voice.tools.HandOffToolFactory import HandOffToolFactory
 
@@ -27,7 +28,7 @@ class VoiceContainer:
         self.call_handler = CallHandler(
             backend_client,
             SessionFactory(AssistantModelFactory(configuration), VoiceCatalog(), KeyTermCatalog()),
-            VoiceAgentFactory(HandOffToolFactory(reason_catalog), EndCallToolFactory(GoodbyeChecker())),
+            VoiceAgentFactory(HandOffToolFactory(reason_catalog), EndCallToolFactory(GoodbyeChecker()), PromptInjectionGuard()),
             CallRecordFactory(),
             CallReportBuilder(),
             HandOffGraph(ReasonNode(reason_catalog), RingTeamNode(backend_client)),
