@@ -2,7 +2,7 @@ import os
 
 from deepeval.models import AzureOpenAIModel
 
-from app.analysis.clients.AzureStructuredModel import AzureStructuredModel
+from app.common.clients.AzureStructuredModel import AzureStructuredModel
 from app.configuration.AppConfiguration import AppConfiguration
 from tests.support.SampleData import SampleData
 
