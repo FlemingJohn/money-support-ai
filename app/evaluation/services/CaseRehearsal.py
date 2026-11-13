@@ -7,6 +7,7 @@ from app.evaluation.services.TurnChecker import TurnChecker
 from app.voice.actions.RehearsalCallActions import RehearsalCallActions
 from app.voice.factories.AssistantModelFactory import AssistantModelFactory
 from app.voice.factories.VoiceAgentFactory import VoiceAgentFactory
+from app.voice.services.PromptInjectionGuard import PromptInjectionGuard
 
 
 class CaseRehearsal:
@@ -16,11 +17,13 @@ class CaseRehearsal:
         assistant_model_factory: AssistantModelFactory,
         judge_model_factory: JudgeModelFactory,
         turn_checker: TurnChecker,
+        prompt_injection_guard: PromptInjectionGuard,
     ) -> None:
         self.voice_agent_factory = voice_agent_factory
         self.assistant_model_factory = assistant_model_factory
         self.judge_model_factory = judge_model_factory
         self.turn_checker = turn_checker
+        self.prompt_injection_guard = prompt_injection_guard
 
     async def rehearse(self, case: EvaluationCase, prompt_content: str) -> EvaluationCaseResult:
         try:
@@ -37,7 +40,7 @@ class CaseRehearsal:
         try:
             async with AgentSession(llm=assistant_model) as session:
                 await session.start(self.voice_agent_factory.make(prompt_content, RehearsalCallActions(), self.make_history(case)))
-                result = await session.run(user_input=case.caller_line)
+                result = await session.run(user_input=self.prompt_injection_guard.clean(case.caller_line))
                 await self.turn_checker.check(result, case.checked_turn, judge_model)
         finally:
             await assistant_model.aclose()
