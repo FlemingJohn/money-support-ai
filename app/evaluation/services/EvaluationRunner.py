@@ -1,8 +1,8 @@
 import asyncio
 
 from app.assistant.services.AssistantSyncService import AssistantSyncService
-from app.backend.clients.BackendClient import BackendClient
 from app.backend.exceptions.BackendRequestError import BackendRequestError
+from app.evaluation.clients.ReviewTestClient import ReviewTestClient
 from app.evaluation.models.EvaluationCase import EvaluationCase
 from app.evaluation.models.EvaluationCaseResult import EvaluationCaseResult
 from app.evaluation.models.EvaluationProgress import EvaluationProgress
@@ -17,13 +17,13 @@ class EvaluationRunner:
         case_loader: EvaluationCaseLoader,
         sync_service: AssistantSyncService,
         case_rehearsal: CaseRehearsal,
-        backend_client: BackendClient,
+        review_test_client: ReviewTestClient,
         max_concurrent_runs: int,
     ) -> None:
         self.case_loader = case_loader
         self.sync_service = sync_service
         self.case_rehearsal = case_rehearsal
-        self.backend_client = backend_client
+        self.review_test_client = review_test_client
         self.run_limit = asyncio.Semaphore(max_concurrent_runs)
 
     async def run(self, extra_rules: list[str] | None = None, progress: EvaluationProgress | None = None) -> EvaluationReport:
@@ -36,7 +36,7 @@ class EvaluationRunner:
 
     async def load_review_cases(self) -> list[EvaluationCase]:
         try:
-            return await self.backend_client.get_review_tests()
+            return await self.review_test_client.get_review_tests()
         except BackendRequestError:
             return []
 
