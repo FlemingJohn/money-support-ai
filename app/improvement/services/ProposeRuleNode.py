@@ -1,6 +1,6 @@
 from langgraph.config import get_stream_writer
 
-from app.analysis.clients.StructuredModel import StructuredModel
+from app.common.clients.StructuredModel import StructuredModel
 from app.common.services.TemplateRenderer import TemplateRenderer
 from app.improvement.outputs.RuleProposalOutput import RuleProposalOutput
 from app.improvement.state.ImprovementState import ImprovementState
