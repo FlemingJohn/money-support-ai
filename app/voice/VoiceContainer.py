@@ -3,9 +3,7 @@ import httpx
 from app.backend.clients.BackendClient import BackendClient
 from app.configuration.AppConfiguration import AppConfiguration
 from app.handoff.catalogs.HandOffReasonCatalog import HandOffReasonCatalog
-from app.handoff.services.HandOffGraph import HandOffGraph
-from app.handoff.services.ReasonNode import ReasonNode
-from app.handoff.services.RingTeamNode import RingTeamNode
+from app.handoff.services.HandOffService import HandOffService
 from app.voice.catalogs.KeyTermCatalog import KeyTermCatalog
 from app.voice.catalogs.VoiceCatalog import VoiceCatalog
 from app.voice.factories.AssistantModelFactory import AssistantModelFactory
@@ -31,7 +29,7 @@ class VoiceContainer:
             VoiceAgentFactory(HandOffToolFactory(reason_catalog), EndCallToolFactory(GoodbyeChecker()), PromptInjectionGuard()),
             CallRecordFactory(),
             CallReportBuilder(),
-            HandOffGraph(ReasonNode(reason_catalog), RingTeamNode(backend_client)),
+            HandOffService(reason_catalog, backend_client),
             reason_catalog,
         )
 
