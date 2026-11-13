@@ -1,8 +1,8 @@
 from app.analysis.catalogs.MaskKindCatalog import MaskKindCatalog
-from app.analysis.clients.StructuredModel import StructuredModel
 from app.analysis.models.LineMaskingResponse import LineMaskingResponse
 from app.analysis.outputs.MaskingOutput import MaskingOutput
 from app.analysis.services.PieceMasker import PieceMasker
+from app.common.clients.StructuredModel import StructuredModel
 from app.common.services.TemplateRenderer import TemplateRenderer
 
 
