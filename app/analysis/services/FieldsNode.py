@@ -1,9 +1,9 @@
-from app.analysis.clients.StructuredModel import StructuredModel
 from app.analysis.models.ExtractedField import ExtractedField
 from app.analysis.outputs.FieldOutput import FieldOutput
 from app.analysis.outputs.FieldsOutput import FieldsOutput
 from app.analysis.services.TranscriptFormatter import TranscriptFormatter
 from app.analysis.state.CallAnalysisState import CallAnalysisState
+from app.common.clients.StructuredModel import StructuredModel
 from app.common.services.TemplateRenderer import TemplateRenderer
 
 
