@@ -20,7 +20,7 @@ Neither program touches the database. Both read and write through the backend.
 1. LiveKit sends the call to the worker named `money-support`. The room name is the call id.
 2. `CallHandler` reads the published prompt and settings from `GET /internal/agent/published`, starts the session and reports `POST /internal/calls/started`.
 3. `SessionFactory` builds the session on LiveKit Inference: Deepgram nova-3 with Wise key terms, `openai/gpt-4o` at temperature 0, an Inworld voice from `VoiceCatalog`, the English turn detector, and noise cancellation (telephone-tuned for phone calls).
-4. The agent greets the caller and answers from the FAQs.
+4. The agent greets the caller and answers from the FAQs. Before the model reads each caller turn, `PromptInjectionGuard` replaces any attempt to change, ignore or read out the instructions with a short note, so the model treats it as out of scope and hands off. Rehearsals clean the caller line the same way.
 5. `handOffToHuman` says why, runs the `HandOffGraph` (describe_reason, then ring_team), says the hand-off sentence and ends the call.
 6. `endCall` ends the call only after the agent asked if there is anything else and the caller said goodbye (`GoodbyeChecker`).
 7. `SilenceWatcher` asks "Are you still there?" twice, then ends the call. `CallTimer` ends it at the time limit.
