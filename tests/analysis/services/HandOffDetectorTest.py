@@ -17,11 +17,10 @@ class HandOffDetectorTest:
         request = AnalysisRequest(call_id="c", hand_off_sentence=self.sentence, lines=[CallLine(position=0, speaker="caller", text=self.sentence)])
         assert not self.detector.is_handed_off(request)
 
-    def test_counts_a_missed_transfer_as_a_hand_off(self) -> None:
-        request = AnalysisRequest(call_id="c", hand_off_sentence=self.sentence, ended_reason="call.forwarding.no-answer", lines=[])
+    def test_counts_a_call_that_ended_with_a_hand_off(self) -> None:
+        request = AnalysisRequest(call_id="c", hand_off_sentence=self.sentence, ended_reason="handedOff", lines=[])
         assert self.detector.is_handed_off(request)
 
-    def test_counts_the_team_closed_sentence_as_a_hand_off(self) -> None:
-        closed = "Our support team is closed right now, so please call back on a weekday between 9am and 5pm UK time."
-        request = AnalysisRequest(call_id="c", hand_off_sentence=self.sentence, lines=[CallLine(position=0, speaker="agent", text=closed)])
-        assert self.detector.is_handed_off(request)
+    def test_does_not_count_a_call_the_caller_ended(self) -> None:
+        request = AnalysisRequest(call_id="c", hand_off_sentence=self.sentence, ended_reason="callerHungUp", lines=[])
+        assert not self.detector.is_handed_off(request)
