@@ -1,6 +1,5 @@
 from livekit.agents import AgentSession, inference, room_io
-from livekit.plugins import noise_cancellation, silero
-from livekit.plugins.turn_detector.english import EnglishModel
+from livekit.plugins import noise_cancellation
 
 from app.backend.models.AgentSettings import AgentSettings
 from app.backend.models.CallChannel import CallChannel
@@ -24,9 +23,8 @@ class SessionFactory:
             stt=inference.STT(self.transcription_model, language=agent.language, extra_kwargs={"keyterm": self.key_term_catalog.key_terms}),
             llm=self.assistant_model_factory.make(),
             tts=inference.TTS(self.voice_catalog.speech_model, voice=self.voice_catalog.get_voice(agent.voice)),
-            vad=silero.VAD.load(),
             turn_handling={
-                "turn_detection": EnglishModel(),
+                "turn_detection": inference.TurnDetector(),
                 "endpointing": {"min_delay": self.shortest_pause_seconds},
                 "interruption": {"min_words": self.fewest_interrupting_words},
             },
