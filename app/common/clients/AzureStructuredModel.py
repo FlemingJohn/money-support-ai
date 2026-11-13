@@ -1,7 +1,7 @@
 from langchain_openai import AzureChatOpenAI
 from pydantic import BaseModel
 
-from app.analysis.clients.StructuredModel import StructuredModel
+from app.common.clients.StructuredModel import StructuredModel
 from app.configuration.AppConfiguration import AppConfiguration
 
 
