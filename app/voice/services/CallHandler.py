@@ -7,7 +7,7 @@ from app.backend.clients.BackendClient import BackendClient
 from app.backend.exceptions.BackendRequestError import BackendRequestError
 from app.backend.models.PublishedAgent import PublishedAgent
 from app.handoff.catalogs.HandOffReasonCatalog import HandOffReasonCatalog
-from app.handoff.services.HandOffGraph import HandOffGraph
+from app.handoff.services.HandOffService import HandOffService
 from app.voice.actions.LiveCallActions import LiveCallActions
 from app.voice.factories.CallRecordFactory import CallRecordFactory
 from app.voice.factories.SessionFactory import SessionFactory
@@ -28,7 +28,7 @@ class CallHandler:
         voice_agent_factory: VoiceAgentFactory,
         call_record_factory: CallRecordFactory,
         call_report_builder: CallReportBuilder,
-        hand_off_graph: HandOffGraph,
+        hand_off_service: HandOffService,
         reason_catalog: HandOffReasonCatalog,
     ) -> None:
         self.backend_client = backend_client
@@ -36,7 +36,7 @@ class CallHandler:
         self.voice_agent_factory = voice_agent_factory
         self.call_record_factory = call_record_factory
         self.call_report_builder = call_report_builder
-        self.hand_off_graph = hand_off_graph
+        self.hand_off_service = hand_off_service
         self.reason_catalog = reason_catalog
 
     async def handle(self, job_context: JobContext) -> None:
@@ -45,7 +45,7 @@ class CallHandler:
         call_record = self.call_record_factory.make(job_context.room.name, caller)
         published_agent = await self.backend_client.get_published_agent()
         session = self.session_factory.make(published_agent.settings.agent)
-        call_actions = LiveCallActions(session, call_record, published_agent.settings.hand_off.hand_off_sentence, self.hand_off_graph, self.reason_catalog)
+        call_actions = LiveCallActions(session, call_record, published_agent.settings.hand_off.hand_off_sentence, self.hand_off_service, self.reason_catalog)
         self.watch_call(job_context, session, call_record, call_actions, published_agent)
         agent = self.voice_agent_factory.make(published_agent.prompt_content, call_actions)
         await session.start(agent, room=job_context.room, room_options=self.session_factory.make_room_options(call_record.channel))
