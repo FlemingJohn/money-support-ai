@@ -14,7 +14,7 @@ from tests.support.ScriptedStructuredModel import ScriptedStructuredModel
 class CallAnalysisServiceTest:
     sample_data = SampleData()
 
-    def make_request(self, ended_reason: str = "assistant-ended-call") -> AnalysisRequest:
+    def make_request(self, ended_reason: str = "agentEndedCall") -> AnalysisRequest:
         return AnalysisRequest(
             call_id="call-1",
             ended_reason=ended_reason,
@@ -67,7 +67,7 @@ class CallAnalysisServiceTest:
         assert not response.is_complete
 
     def test_reads_a_hand_off_from_the_ended_reason(self) -> None:
-        response, _ = self.analyse(ScriptedAnswers().all(), self.make_request("assistant-said-end-call-phrase"))
+        response, _ = self.analyse(ScriptedAnswers().all(), self.make_request("handedOff"))
         assert response.is_handed_off
         assert response.suggested_review.reason == "handOff"
 
