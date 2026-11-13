@@ -2,8 +2,6 @@ import httpx
 from fastapi import APIRouter
 
 from app.analysis.catalogs.MaskKindCatalog import MaskKindCatalog
-from app.analysis.clients.AzureStructuredModel import AzureStructuredModel
-from app.analysis.clients.StructuredModel import StructuredModel
 from app.analysis.routes.AnalysisRouter import AnalysisRouter
 from app.analysis.services.CallAnalysisGraph import CallAnalysisGraph
 from app.analysis.services.CallAnalysisService import CallAnalysisService
@@ -22,10 +20,13 @@ from app.assistant.routes.AssistantRouter import AssistantRouter
 from app.assistant.services.AssistantSyncService import AssistantSyncService
 from app.assistant.services.PromptBuilder import PromptBuilder
 from app.backend.clients.BackendClient import BackendClient
+from app.common.clients.AzureStructuredModel import AzureStructuredModel
+from app.common.clients.StructuredModel import StructuredModel
 from app.common.guards.ServiceSecretGuard import ServiceSecretGuard
 from app.common.services.ServerSentEvents import ServerSentEvents
 from app.common.services.TemplateRenderer import TemplateRenderer
 from app.configuration.AppConfiguration import AppConfiguration
+from app.evaluation.clients.ReviewTestClient import ReviewTestClient
 from app.evaluation.factories.JudgeModelFactory import JudgeModelFactory
 from app.evaluation.routes.EvaluationRouter import EvaluationRouter
 from app.evaluation.services.CaseRehearsal import CaseRehearsal
@@ -125,7 +126,7 @@ class ServiceContainer:
             EvaluationCaseLoader(self.configuration.evaluation_cases_folder),
             self.sync_service,
             self.case_rehearsal,
-            self.backend_client,
+            ReviewTestClient(self.backend_client),
             self.configuration.max_concurrent_runs,
         )
 
