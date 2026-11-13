@@ -1,45 +1,44 @@
-# ai
+# money-support-ai
 
-Python service that decides how the agent behaves. It builds the prompt and the Vapi assistant from the FAQs and settings, analyses every finished call with a LangGraph graph on Azure OpenAI (masking personal data, summary, topic, matched FAQ, fields and checks), masks live test-call lines, and tests the agent with Vapi Evals, Simulations and DeepEval. It never touches the database, and nothing here runs during a live call.
+Python code for everything the agent says and thinks. It holds two programs that share one codebase:
+
+- **The voice worker** (`app/voice/`) runs every live call on LiveKit. It hears the caller, answers from the FAQs, hands off to a person, and reports the call to the backend when it ends.
+- **The API** (`app/main.py`) builds the prompt from the FAQs and settings, analyses every finished call with a LangGraph graph on Azure OpenAI (masking personal data, summary, topic, matched FAQ, fields and checks), masks live test-call lines, tests the agent, and suggests new rules from reviews.
+
+Neither program touches the database. Both read and write through the backend.
 
 ## How it is built
 
-- Classes only. Routers handle HTTP, services hold the steps, factories and catalogs build pieces of the Vapi assistant, clients talk to the backend and Vapi.
+- Classes only. Routers handle HTTP, services hold the steps, factories and catalogs build pieces, clients talk to the backend.
 - Every class is alone in a file named after it.
-- `ServiceContainer` creates every object once and hands each router what it needs. `ApplicationFactory` turns the routers into the FastAPI app.
-- Prompts are Markdown files in `prompts/`. Jinja fills in the FAQs and settings; `{% raw %}` keeps Vapi's own `{{…}}` placeholders as they are.
+- `ServiceContainer` wires the API and `VoiceContainer` wires the worker. The API never imports the audio packages, so it stays small enough for Vercel.
+- `VoiceAgentFactory` builds the agent from the prompt and two tools. The worker gives it live call actions; tests give it rehearsal actions that do nothing.
+- Prompts are Markdown files in `prompts/`, filled in with Jinja.
+
+## A live call
+
+1. LiveKit sends the call to the worker named `money-support`. The room name is the call id.
+2. `CallHandler` reads the published prompt and settings from `GET /internal/agent/published`, starts the session and reports `POST /internal/calls/started`.
+3. `SessionFactory` builds the session on LiveKit Inference: Deepgram nova-3 with Wise key terms, `openai/gpt-4o` at temperature 0, an Inworld voice from `VoiceCatalog`, the English turn detector, and noise cancellation (telephone-tuned for phone calls).
+4. The agent greets the caller and answers from the FAQs.
+5. `handOffToHuman` says why, runs the `HandOffGraph` (describe_reason, then ring_team), says the hand-off sentence and ends the call.
+6. `endCall` ends the call only after the agent asked if there is anything else and the caller said goodbye (`GoodbyeChecker`).
+7. `SilenceWatcher` asks "Are you still there?" twice, then ends the call. `CallTimer` ends it at the time limit.
+8. When the session closes, `CallReportBuilder` turns the conversation into a report and sends `POST /internal/calls/finished`, with one of `callerHungUp`, `agentEndedCall`, `handedOff`, `silenceTimeout`, `timeLimit` or `error`.
 
 ## Endpoints
 
 | Method | Path | Used by | What it does |
 |---|---|---|---|
 | GET | `/health` | backend Connections tab | Says the service is up |
-| POST | `/assistant/sync` | backend, after FAQ or settings changes | Rebuilds the prompt and creates or updates the assistant in Vapi |
+| POST | `/assistant/sync` | backend, after FAQ or settings changes | Builds the prompt and returns it with its hash, for the backend to publish |
 | POST | `/analysis` | backend, when a call ends | Runs the call analysis graph and returns masked lines, summary, topic, matched FAQ, fields, checks and a suggested review |
-| POST | `/masking/line` | backend, for the Test call page | Masks one finished caller line |
-| POST | `/evaluations/run` | a person, on demand | Runs every case in `evaluation/cases/` as a Vapi Eval and waits for the results |
-| POST | `/simulations/run` | a person, on demand | Starts one Vapi Simulation run with every scenario in `simulation/scenarios/` |
-| GET | `/simulations/runs/{runId}` | a person, on demand | Shows how many simulations passed, failed or are still running |
+| POST | `/masking/line` | backend, for the Test call page | Masks one caller line |
+| POST | `/evaluations/run` | backend, on demand | Rehearses every test case and returns the results |
+| POST | `/evaluations/run/stream` | backend, on demand | The same, streaming each result as it finishes |
+| POST | `/improvements/suggest/stream` | backend, on demand | Proposes a rule from wrong replies and tests it on a copy of the agent |
 
 Everything except `/health` needs the `x-service-secret` header, with the same value as the backend's `SERVICE_SECRET`.
-
-## What happens on a sync
-
-1. `BackendClient` reads the active FAQs from `GET /internal/faqs` and the settings from `GET /internal/settings`.
-2. `PromptBuilder` fills `prompts/assistant/SystemPrompt.md` with them, and the prompt is hashed.
-3. `AssistantConfigurationBuilder` builds the assistant:
-   - gpt-4o at temperature 0 with the prompt and the tools from `ToolCatalog`: `endCall` for goodbyes, `transferCall` in transfer mode
-   - a `promptCacheKey` per prompt version, so every call reuses OpenAI's cached prompt; the live UK time sits at the end of the prompt so it never breaks the cached part
-   - a Vapi voice at 0.9 speed from `VoiceFactory`, and Deepgram nova-3 with Wise key terms such as "bank account" and "IBAN" from `TranscriberFactory`
-   - turn-taking from `SpeakingPlanFactory`: LiveKit smart endpointing so the agent waits for the caller to finish, and two words or a phrase such as "hang on" to interrupt it, while "okay" or "mm-hmm" never do
-   - background sound off and Krisp denoising from `NoisePlanFactory`
-   - in end-call mode, the `handOffToHuman` tool from `HandOffToolFactory` when `AI_PUBLIC_URL` is set: Vapi sends the tool call to `/tools/hand-off`, the `HandOffGraph` (describe_reason, then ring_team) asks the backend to ring the team phone, then Vapi speaks the hand-off sentence and ends the call. Without `AI_PUBLIC_URL`, the hand-off sentence is an end-call phrase instead.
-   - silence and unclear-speech hooks from `HookCatalog`
-   - the prompt-injection filter from `CompliancePlanFactory`
-   - Vapi's own summary and structured data turned off, because ai/ analyses the call instead
-   - recording off, and the backend webhook when `VAPI_WEBHOOK_URL` is set
-4. `VapiAssistantClient` finds our assistant by its `metadata.service` tag and updates it, or creates it the first time. Other assistants in the Vapi account are never touched.
-5. The prompt and its hash go back to the backend, which saves them as the current prompt version.
 
 ## Call analysis
 
@@ -66,30 +65,30 @@ Every model call uses a strict JSON schema and retries three times. A step that 
 
 | Kind | Where | How it runs |
 |---|---|---|
-| Evals | `evaluation/cases/E01…E25` | A scripted chat with the real assistant. Each checked reply is judged by an AI judge against an expectation, by a pattern for the exact hand-off sentence, or by the tool it calls. |
-| Simulations | `simulation/scenarios/S01…S05` | A pretend caller has a whole conversation with the assistant over Vapi web chat. Yes or no questions about the conversation decide the result. `transferCall` is mocked. |
+| Rehearsals | `evaluation/cases/E01…E25` and the tests made from reviews | `CaseRehearsal` runs the real agent as text in a LiveKit session. Answers are judged by `openai/gpt-4.1` against the expectation, hand-offs by the `handOffToHuman` call and its reason, goodbyes by the `endCall` call. |
 | DeepEval | `evaluation/masking/cases.json` (52 lines), `evaluation/analysis/calls.json` (4 calls) | `tests/live/`: masking checked line by line, and whole calls checked for matched FAQ, hand-off, review reason and fields, plus a GEval judge for summary quality. Run with `uv run pytest -m live`. |
 
-Evals and Simulations cost Vapi credits and DeepEval calls Azure OpenAI, so they only run when asked. `uv run pytest` runs only the fast tests, which use a scripted model.
+Rehearsals use LiveKit Inference and DeepEval uses Azure OpenAI, so they only run when asked. `uv run pytest` runs only the fast tests, which use scripted models.
 
 ## Structure
 
 ```
-ai/
+money-support-ai/
 ├── app/
 │   ├── main.py · ApplicationFactory.py · ServiceContainer.py
 │   ├── configuration/  AppConfiguration
-│   ├── common/         CamelModel, ServiceSecretGuard, TemplateRenderer, RunPoller, errors
-│   ├── backend/        BackendClient and the FAQ and settings models
-│   ├── vapi/           VapiClient
-│   ├── assistant/      prompt, assistant configuration, tools, hooks, plans, sync
+│   ├── common/         CamelModel, ServiceSecretGuard, TemplateRenderer, errors
+│   ├── backend/        BackendClient and the models the backend sends and receives
+│   ├── assistant/      prompt and sync
+│   ├── voice/          the worker: agent, tools, session, call actions, report
+│   ├── handoff/        LangGraph hand-off graph
 │   ├── analysis/       LangGraph call analysis graph, its nodes, schemas and Azure client
-│   ├── evaluation/     Vapi Evals from the case files
-│   ├── simulation/     Vapi Simulations from the scenario files
+│   ├── evaluation/     rehearsals of the case files
+│   ├── improvement/    LangGraph rule suggestion graph
 │   └── health/
-├── prompts/            assistant · analysis · evaluation · simulation
-├── evaluation/cases/   one JSON file per eval case
-├── simulation/scenarios/  one JSON file per scenario
+├── prompts/            assistant · analysis · evaluation · improvement
+├── evaluation/cases/   one JSON file per test case
+├── Dockerfile          the voice worker image
 └── tests/              mirrors app/
 ```
 
@@ -98,26 +97,28 @@ ai/
 Needs Python 3.12 and [uv](https://docs.astral.sh/uv/).
 
 ```bash
-cd ai
-uv sync
+uv sync --group voice
 cp .env.example .env
 uv run uvicorn app.main:app --port 8000
+uv run python -m app.voice.VoiceWorker dev
 ```
 
 | Variable | Value |
 |---|---|
 | `SERVICE_SECRET` | Same as the backend |
 | `BACKEND_URL` | `http://localhost:4000` |
-| `VAPI_API_KEY` | Vapi private key |
-| `VAPI_WEBHOOK_URL` | Public URL of the backend's `/vapi/webhook`, for example through a tunnel. Leave empty to keep the webhook as it is. |
-| `VAPI_WEBHOOK_SECRET` | Same as the backend |
-| `ASSISTANT_MODEL` | `gpt-4o` |
-| `JUDGE_MODEL` | Model for the eval judge, `gpt-4.1` by default |
-| `RUN_TIMEOUT_SECONDS` | How long `/evaluations/run` waits, 240 by default so it ends inside Vercel's 300-second limit |
+| `LIVEKIT_URL` | The LiveKit project URL, needed by the worker |
+| `LIVEKIT_API_KEY` | LiveKit project key, for the worker and for rehearsals |
+| `LIVEKIT_API_SECRET` | LiveKit project secret |
+| `ASSISTANT_MODEL` | `openai/gpt-4o` |
+| `JUDGE_MODEL` | Model for the rehearsal judge, `openai/gpt-4.1` by default |
+| `AZURE_OPENAI_*` | The Azure deployment used by call analysis and masking |
 
-Then set `AI_SERVICE_URL=http://localhost:8000` in `backend/.env` so the backend uses this service.
+Then set `AI_SERVICE_URL=http://localhost:8000` in the backend so it uses this service.
 
 | Command | What it does |
 |---|---|
-| `uv run pytest` | Runs the tests |
-| `uv run uvicorn app.main:app --reload --port 8000` | Starts the service and restarts on changes |
+| `uv run pytest` | Runs the fast tests |
+| `uv run uvicorn app.main:app --reload --port 8000` | Starts the API and restarts on changes |
+| `uv run python -m app.voice.VoiceWorker dev` | Starts the voice worker against your LiveKit project |
+| `lk agent create` / `lk agent deploy` | Builds the `Dockerfile` and deploys the worker to LiveKit Cloud |
