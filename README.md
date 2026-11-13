@@ -21,7 +21,7 @@ Neither program touches the database. Both read and write through the backend.
 2. `CallHandler` reads the published prompt and settings from `GET /internal/agent/published`, starts the session and reports `POST /internal/calls/started`.
 3. `SessionFactory` builds the session on LiveKit Inference: Deepgram nova-3 with Wise key terms, `openai/gpt-4o` at temperature 0, an Inworld voice from `VoiceCatalog`, the LiveKit Inference turn detector (it hears pauses and tone, and ignores "mm-hmm"), the built-in Silero VAD, and noise cancellation (telephone-tuned for phone calls).
 4. The agent greets the caller and answers from the FAQs. Before the model reads each caller turn, `PromptInjectionGuard` replaces any attempt to change, ignore or read out the instructions with a short note, so the model treats it as out of scope and hands off. Rehearsals clean the caller line the same way.
-5. `handOffToHuman` says why, runs the `HandOffGraph` (describe_reason, then ring_team), says the hand-off sentence and ends the call.
+5. `handOffToHuman` says why, asks `HandOffService` to ring the team with the reason in plain words, says the hand-off sentence and ends the call.
 6. `endCall` ends the call only after the agent asked if there is anything else and the caller said goodbye (`GoodbyeChecker`).
 7. `SilenceWatcher` asks "Are you still there?" twice, then ends the call. `CallTimer` ends it at the time limit.
 8. When the session closes, `CallReportBuilder` turns the conversation into a report and sends `POST /internal/calls/finished`, with one of `callerHungUp`, `agentEndedCall`, `handedOff`, `silenceTimeout`, `timeLimit` or `error`.
@@ -77,12 +77,12 @@ money-support-ai/
 ├── app/
 │   ├── main.py · ApplicationFactory.py · ServiceContainer.py
 │   ├── configuration/  AppConfiguration
-│   ├── common/         CamelModel, ServiceSecretGuard, TemplateRenderer, errors
+│   ├── common/         CamelModel, the Azure structured model, ServiceSecretGuard, TemplateRenderer, errors
 │   ├── backend/        BackendClient and the models the backend sends and receives
 │   ├── assistant/      prompt and sync
 │   ├── voice/          the worker: agent, tools, session, call actions, report
-│   ├── handoff/        LangGraph hand-off graph
-│   ├── analysis/       LangGraph call analysis graph, its nodes, schemas and Azure client
+│   ├── handoff/        hand-off reasons and ringing the team
+│   ├── analysis/       LangGraph call analysis graph, its nodes and schemas
 │   ├── evaluation/     rehearsals of the case files
 │   ├── improvement/    LangGraph rule suggestion graph
 │   └── health/
