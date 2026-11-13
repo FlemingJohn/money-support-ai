@@ -2,7 +2,7 @@ from collections.abc import Callable
 
 from pydantic import BaseModel
 
-from app.analysis.clients.StructuredModel import StructuredModel
+from app.common.clients.StructuredModel import StructuredModel
 
 
 class ScriptedStructuredModel(StructuredModel):
